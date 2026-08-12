@@ -129,22 +129,92 @@ class Input_Stream(Machine):
 
 
 class Map:
-    def __init__(self, GRID_SIZE_LOCAL, loud_debug=False):
-        self.grid = [[copy.deepcopy(CELL_TEMPLATE) for _ in range(GRID_SIZE_LOCAL["cols"])] for _ in range(GRID_SIZE_LOCAL["rows"])]
+    def __init__(self, rows, cols, loud_debug=False):
+        if not isinstance(rows, int) or not isinstance(cols, int):
+            raise TypeError("rows and cols must be integers")
+        if rows <= 0 or cols <= 0:
+            raise ValueError("rows and cols must be positive")
+
+        self.rows = rows
+        self.cols = cols
+        self.grid = [[copy.deepcopy(CELL_TEMPLATE) for _ in range(cols)] for _ in range(rows)]
         self.loud_debug = loud_debug
+
+    def is_in_bounds(self, row, col):
+        row_in_bounds = (0 <= row < self.rows)
+        col_in_bounds = (0 <= col < self.cols)
+        return row_in_bounds and col_in_bounds
+    
+    def get_cell(self, row, col):
+        if not self.is_in_bounds(row, col):
+            raise ValueError(f"Row {row} Col {col} is out of bounds!")
+        return self.grid[row][col]
+
+    def get_output_directions(self, row, col):
+        if not self.is_in_bounds(row, col):
+            raise ValueError(f"Row {row} Col {col} is out of bounds!")
+        if self.is_empty(row, col):
+            raise ValueError(f"Row {row} Col {col}: obj is null, so it can't have output directions")
+        return self.get_cell(row, col)['output_directions']
+
+    def set_cell(self, row, col, data):
+        if not self.is_in_bounds(row, col):
+            raise ValueError(f"Row {row} Col {col} is out of bounds!")
+        self.grid[row][col] = data
+
+    def iter_cells(self):
+        for row in range(self.rows):
+            for col in range(self.cols):
+                yield row, col, self.grid[row][col]
+    
+    def is_empty(self, row, col):
+        cell_status = self.get_cell(row, col)['status']
+        obj = self.get_cell(row, col)['obj']
+        if cell_status == 'empty' and obj:
+            raise ValueError(f"row {row}, col {col}: cell marked empty but object exists")
+        elif cell_status == 'occupied' and not obj:
+            raise ValueError(f"row {row}, col {col}: cell marked occupied but object doesn't exist")
+        
+        if cell_status == 'empty':
+            return True
+        else: 
+            return False
+
+    def get_starting_machine(self):
+        coordinates_input_stream = self.search_grid(is_input_stream)
+        if len(coordinates_input_stream) != 1: raise ValueError("improper number of input streams")
+        row_input_stream, col_input_stream = coordinates_input_stream[0]
+        obj_input_stream = self.get_cell(row_input_stream, col_input_stream)['obj']
+        return row_input_stream, col_input_stream, obj_input_stream
+
+    def get_outputs(self, row_start, col_start, output_direction):
+        print(f'output direction : {output_direction}')
+        row_output = row_start + output_direction[0][0]
+        col_output = col_start + output_direction[0][1]
+        if not self.is_in_bounds(row_output, col_output):
+            raise ValueError(f'Row {row_output} Col {col_output} is out of bounds')
+        obj_output = self.grid[row_output][col_output]['obj']
+        print(f'Output row {row_output}, Output Col {col_output}')
+        return row_output, col_output, obj_output
 
     def install_machine(self, obj, install_location, output_directions):
         row, col = install_location
-        if not (0 <= row < len(self.grid)) or not (0 <= col < len(self.grid[0])): raise ValueError("install_location out of bounds")
-        if self.grid[row][col]["status"] != "empty": raise ValueError("install location already occupied")
+        if not self.is_in_bounds(row, col):
+            raise ValueError("install_location out of bounds")
+        if not self.is_empty(row, col):
+            raise ValueError("install location already occupied")
         if output_directions is not None and not isinstance(output_directions, list):
             raise ValueError('Directions not entered as list')
-        self.grid[row][col]["obj"] = obj
-        self.grid[row][col]["status"] = "occupied"
-        self.grid[row][col]["output_directions"] = []
+       
+        #self.calc_output_cells(output_directions=output_directions)
+
+        cell = self.get_cell(row, col)
+        cell["obj"] = obj
+        cell["status"] = "occupied"
+        cell["output_directions"] = []
         if output_directions is not None:
-            for x in output_directions:
-                self.grid[row][col]["output_directions"].append(x)
+            for direction in output_directions:
+                cell["output_directions"].append(direction)
 
     def new_print_grid(self):
         print('\n\n')
@@ -253,27 +323,18 @@ class Map:
     def search_grid(self, function=None):
         collection = []
         if function:
-            for index_row, row in enumerate(self.grid):
-                for index_col, col in enumerate(row):
-                    if function(self.grid[index_row][index_col]["obj"]) == True:
-                        temp = [index_row, index_col]
-                        collection.append(temp)
-                        #print(f'row {index_row}, col {index_col}')
+            for row, col, cell in self.iter_cells():
+                if function(cell["obj"]) == True:
+                    collection.append([row, col])
         return collection
 
     def run_simple_route(self):
-        # find input stream and output directions
-        coordinates_input_stream = self.search_grid(is_input_stream)
-        if len(coordinates_input_stream) != 1: raise ValueError("improper number of input streams")
-        row_input_stream, col_input_stream = coordinates_input_stream[0]
-        obj_input_stream = self.grid[row_input_stream][col_input_stream]['obj']
-
+        # find the input stream
+        row_input_stream, col_input_stream, obj_input_stream = self.get_starting_machine()
+        
         # find input stream's output
-        direction_output = self.grid[row_input_stream][col_input_stream]['output_directions']
-        if len(direction_output) != 1: raise ValueError("only one output allowed")
-        row_output = row_input_stream + direction_output[0][0]
-        col_output = col_input_stream + direction_output[0][1]
-        obj_output = self.grid[row_output][col_output]['obj']
+        direction_output = self.get_output_directions(row_input_stream, col_input_stream)
+        row_output, col_output, obj_output = self.get_outputs(row_input_stream, col_input_stream, direction_output)
         
         # set up loop and run
         obj_current = obj_input_stream
@@ -287,12 +348,16 @@ class Map:
             if isinstance(obj_current, Evaluator):
                 obj_current.run()
                 obj_current = None
+                obj_next = None
             else:
-                direction_output = self.grid[row_current][col_current]['output_directions']
-                if len(direction_output) != 1: raise ValueError("only one output allowed")
-                row_output = row_current + direction_output[0][0]
-                col_output = col_current + direction_output[0][1]
-                obj_next = self.grid[row_output][col_output]['obj']
+                if self.is_empty(row_current, col_current):
+                    raise ValueError("Cannot output from empty cell")
+                direction_output = self.get_output_directions(row_current, col_current)
+                if len(direction_output) != 1:
+                    raise ValueError("only one output allowed")
+                row_output, col_output, obj_next = self.get_outputs(row_current, col_current, direction_output)
+                if self.is_empty(row_output, col_output):
+                    raise ValueError("Cannot output to empty cell")
 
 
 
