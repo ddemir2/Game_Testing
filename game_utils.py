@@ -10,6 +10,10 @@ LEFT  = [0  , -1]
 UP    = [-1 ,  0]
 DOWN  = [1  ,  0]
 END  = [0  ,  0]
+UP_LEFT    = [-1 , -1]
+UP_RIGHT   = [-1 ,  1]
+DOWN_LEFT  = [1  , -1]
+DOWN_RIGHT = [1  ,  1]
 
 ZERO = 0
 GRID_SIZE = {"rows" : 4, "cols" : 4}
@@ -22,6 +26,21 @@ CELL_TEMPLATE = {
     "output_directions" : [],
 
     } 
+
+DIRECTION_NAMES = {
+    tuple(RIGHT) : "RIGHT",
+    tuple(LEFT)  : "LEFT",
+    tuple(UP)    : "UP",
+    tuple(DOWN)  : "DOWN",
+    tuple(END)   : "END",
+    tuple(UP_LEFT)    : "UP_LEFT",
+    tuple(UP_RIGHT)   : "UP_RIGHT",
+    tuple(DOWN_LEFT)  : "DOWN_LEFT",
+    tuple(DOWN_RIGHT) : "DOWN_RIGHT",
+}
+
+def direction_name(direction) -> str:
+    return DIRECTION_NAMES.get(tuple(direction), str(direction))
 
 
 class Machine:
@@ -66,9 +85,11 @@ class Machine:
             print(f'Output Buffer: {self.output_buffer}')
             print(f"----------------------------\n")
 
+
 class Evaluator(Machine):
     def __init__(self, title, manufacturer, loud_debug=False):
         super().__init__(title, manufacturer, loud_debug)
+
 
 class Evaluator_1(Evaluator):
     def __init__(self, title, manufacturer, loud_debug=False):
@@ -87,6 +108,33 @@ class Evaluator_1(Evaluator):
         else:
             self.output_buffer["main"] = [0]
 
+class Splitter(Machine):
+    def __init__(self, mode, title, manufacturer, loud_debug=False):
+        super().__init__(title, manufacturer, loud_debug)
+        self.mode = mode
+        self.num_inputs = 1
+        self.num_outputs = 2
+        if self.mode != "default": raise ValueError("splitter only has default mode enabled")
+    
+    def run(self):
+        temp = self.input_buffer["main"]
+        length = len(temp)
+        if length % 2 == 1:
+            extra = temp[-1]
+            temp = temp.copy()
+            temp.append(extra)
+            length += 1
+        half_len = length // 2
+        main_output = temp[:half_len]
+        aux_output  = temp[half_len:]
+        self.output_buffer['main'] = main_output.copy()
+        self.output_buffer['aux']  = aux_output.copy()
+
+    def print_logic(self):
+        return f"splits list into 2"
+    
+    def update_mode(self):
+        raise ValueError("only default mode supported")
 
 class Simple_Adder(Machine):
     def __init__(self, operand, title, manufacturer, loud_debug=False):
@@ -188,13 +236,11 @@ class Map:
         return row_input_stream, col_input_stream, obj_input_stream
 
     def get_outputs(self, row_start, col_start, output_direction):
-        print(f'output direction : {output_direction}')
         row_output = row_start + output_direction[0][0]
         col_output = col_start + output_direction[0][1]
         if not self.is_in_bounds(row_output, col_output):
             raise ValueError(f'Row {row_output} Col {col_output} is out of bounds')
         obj_output = self.grid[row_output][col_output]['obj']
-        print(f'Output row {row_output}, Output Col {col_output}')
         return row_output, col_output, obj_output
 
     def install_machine(self, obj, install_location, output_directions):
