@@ -44,9 +44,10 @@ def direction_name(direction) -> str:
 
 
 class Machine:
-    def __init__(self, title, manufacturer, loud_debug=False):
-        if None in (title, manufacturer): raise ValueError("no nulls allowed")
-        self.title = title
+    def __init__(self, title_private, manufacturer, title_public='!(deflt parent)!', loud_debug=False):
+        if None in (title_private, manufacturer): raise ValueError("no nulls allowed")
+        self.title_private = title_private
+        self.title_public = title_public
         self.manufacturer = manufacturer
         self.input_buffer = {"main" : [], "aux" : []}
         self.output_buffer = {"main" : [], "aux" : []}
@@ -80,20 +81,30 @@ class Machine:
             status = self.loud_debug
         if status == True:
             print(f"\n[MACHINE DEBUG]  Curr Line: {inspect.currentframe().f_lineno}, Calling Line : {inspect.currentframe().f_back.f_lineno}, Calling Function: {inspect.currentframe().f_back.f_code.co_name}()")
-            print(f'{self.title} ({self.manufacturer})')
+            print(f'{self.title_private} ({self.manufacturer})')
             print(f'Input Buffer: {self.input_buffer}')
             print(f'Output Buffer: {self.output_buffer}')
             print(f"----------------------------\n")
 
 
 class Evaluator(Machine):
-    def __init__(self, title, manufacturer, loud_debug=False):
-        super().__init__(title, manufacturer, loud_debug)
+    def __init__(self, title_private, manufacturer, title_public='!(deflt eval)!', loud_debug=False):
+        super().__init__(title_private, manufacturer, title_public, loud_debug)
+    
+    def check_success(self):
+        temp_list    = self.get_output('main')
+        if len(temp_list) != 1: raise ValueError("output of evaluator must have one element")
+        temp_num     = temp_list[0]
+        if isinstance(temp_num, int) and temp_num in (0,1):
+            return temp_num
+        else:
+            raise ValueError(f"output of Evaluator object is invalid: {temp_num}")
+
 
 
 class Evaluator_1(Evaluator):
-    def __init__(self, title, manufacturer, loud_debug=False):
-        super().__init__(title, manufacturer, loud_debug)
+    def __init__(self, title_private, manufacturer, title_public='!(deflt eval_1)!', loud_debug=False):
+        super().__init__(title_private, manufacturer, title_public, loud_debug)
         self.num_inputs  = 1
         self.num_outputs = 1
     
@@ -109,8 +120,8 @@ class Evaluator_1(Evaluator):
             self.output_buffer["main"] = [0]
 
 class Splitter(Machine):
-    def __init__(self, mode, title, manufacturer, loud_debug=False):
-        super().__init__(title, manufacturer, loud_debug)
+    def __init__(self, mode, title_private, manufacturer, title_public='!(deflt splitter)!', loud_debug=False):
+        super().__init__(title_private, manufacturer, title_public, loud_debug)
         self.mode = mode
         self.num_inputs = 1
         self.num_outputs = 2
@@ -137,8 +148,8 @@ class Splitter(Machine):
         raise ValueError("only default mode supported")
 
 class Simple_Adder(Machine):
-    def __init__(self, operand, title, manufacturer, loud_debug=False):
-        super().__init__(title, manufacturer, loud_debug)
+    def __init__(self, operand, title_private, manufacturer, title_public='!(deflt adder)!', loud_debug=False):
+        super().__init__(title_private, manufacturer, title_public, loud_debug)
         self.operand = operand
         self.num_inputs  = 1
         self.num_outputs = 1
@@ -158,8 +169,8 @@ class Simple_Adder(Machine):
 
 
 class Input_Stream(Machine):
-    def __init__(self, input_data, title, manufacturer, loud_debug=False):
-        super().__init__(title, manufacturer, loud_debug)
+    def __init__(self, input_data, title_private, manufacturer, title_public='!(deflt istream)!', loud_debug=False):
+        super().__init__(title_private, manufacturer, title_public, loud_debug)
         if not input_data or not isinstance(input_data, list): raise ValueError("input failure")
         self.input_buffer["main"] = input_data
         self.output_buffer["main"] = []
@@ -192,11 +203,27 @@ class Map:
         row_in_bounds = (0 <= row < self.rows)
         col_in_bounds = (0 <= col < self.cols)
         return row_in_bounds and col_in_bounds
-    
+
+
+    def is_evaluator(self, obj):
+        if isinstance(obj, Evaluator):
+            return True
+        else:
+            return False
+        
+
     def get_cell(self, row, col):
         if not self.is_in_bounds(row, col):
             raise ValueError(f"Row {row} Col {col} is out of bounds!")
         return self.grid[row][col]
+
+    def get_obj_at_coordinates(self, row, col):
+        cell   = self.get_cell(row, col)
+        object = cell['obj']
+        if object:
+            return object
+        else:
+            return None
 
     def get_output_directions(self, row, col):
         if not self.is_in_bounds(row, col):
@@ -286,7 +313,7 @@ class Map:
                 if cell['status'] == 'empty':
                     display = '|                  '
                 else:
-                    display = '|' + cell["obj"].title.center(18)
+                    display = '|' + cell["obj"].title_private.center(18)
                 formatted_row.append(f"{display}")
             print("".join(formatted_row) + '|')
             formatted_row = []
@@ -357,7 +384,7 @@ class Map:
 
             for cell in row:
                 if DOWN in cell["output_directions"]:
-                    display = "|        \/        "
+                    display = "|        \\/        "
                 else:
                     display = "|                  "
                 formatted_row.append(f"{display}")
@@ -405,8 +432,14 @@ class Map:
                 if self.is_empty(row_output, col_output):
                     raise ValueError("Cannot output to empty cell")
 
-
-
+    def check_all_win_conditions(self):
+        list_of_evaluators = self.search_grid(self.is_evaluator)
+        if not list_of_evaluators or list_of_evaluators == []: raise ValueError("no evaluators found")
+        list_of_evaluator_results = [self.get_obj_at_coordinates(row, col).check_success() for row, col in list_of_evaluators]
+        if all(list_of_evaluator_results):
+            return True
+        else:
+            return False
 
 #-----------HELPER FUNCTIONS-------------------------
 

@@ -1,12 +1,13 @@
 import tkinter as tk
 import customtkinter as ctk
-import Game_Testing.game_utils as gu
+import game_utils as gu
 
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("green")
 
 CELL_WIDTH = 140
 CELL_HEIGHT = 90
+CELL_DEFAULT_COLOR = "#1f6aa5"
 
 ARROW_ANCHORS = {
     tuple(gu.UP)         : (0.5, 0.01, "n", "\u2191"),
@@ -36,15 +37,25 @@ class GUI:
         self.top_frame.columnconfigure(0, weight=7)
         self.top_frame.columnconfigure(1, weight=3)
 
-        self.cell_frame = ctk.CTkFrame(self.top_frame)
+        self.cell_frame = ctk.CTkFrame(self.top_frame, width=700, height=500)
         self.cell_frame.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
+        self.cell_frame.grid_propagate(False)
 
-        self.info_panel = ctk.CTkFrame(self.top_frame)
+        self.info_panel = ctk.CTkFrame(self.top_frame, width=250, height=500)
         self.info_panel.grid(row=0, column=1, rowspan=3, sticky="nsew", padx=10, pady=10)
+        self.info_panel.grid_propagate(False)
+        self.info_panel.pack_propagate(False)
 
-        self.status_var = tk.StringVar(value="Click a machine cell")
-        self.status_label = ctk.CTkLabel(self.top_frame, textvariable=self.status_var, anchor="w")
-        self.status_label.grid(row=2, column=0, sticky="ew", padx=10, pady=10)
+        self.status_var = tk.StringVar(value="(Nothing Selected)")
+        self.status_label = ctk.CTkLabel(
+            self.info_panel,
+            textvariable=self.status_var,
+            anchor="nw",
+            justify="left",
+            wraplength=230,
+            font=ctk.CTkFont(family="Courier New", size=16),
+        )
+        self.status_label.pack(side="top", fill="x", padx=10, pady=10)
 
         self.control_frame = ctk.CTkFrame(self.top_frame)
         self.control_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=10)
@@ -61,10 +72,8 @@ class GUI:
         self.build_board()
 
     def build_controls(self):
-        run_button = ctk.CTkButton(self.control_frame, text="Run Simple Route", command=self.run_route)
         refresh_button = ctk.CTkButton(self.control_frame, text="Refresh Board", command=self.refresh_board)
 
-        run_button.pack(side="left", padx=5, pady=5)
         refresh_button.pack(side="left", padx=5, pady=5)
 
     def build_board(self):
@@ -86,7 +95,7 @@ class GUI:
                     self.cell_frame,
                     width=CELL_WIDTH,
                     height=CELL_HEIGHT,
-                    fg_color="black",
+                    fg_color=CELL_DEFAULT_COLOR,
                     corner_radius=6,
                 )
                 box.grid(row=row, column=col, sticky="nsew", padx=4, pady=4)
@@ -100,7 +109,7 @@ class GUI:
                 else:
                     label = ctk.CTkLabel(
                         box,
-                        text=cell["obj"].title,
+                        text=cell["obj"].title_private,
                         text_color="white",
                     )
                     label.grid(row=0, column=0, sticky="nsew")
@@ -134,7 +143,7 @@ class GUI:
         cell = self.game_map.get_cell(row, col)
 
         if self.selected_cell is not None and self.selected_cell in self.cell_boxes:
-            self.cell_boxes[self.selected_cell].configure(fg_color="black")
+            self.cell_boxes[self.selected_cell].configure(fg_color=CELL_DEFAULT_COLOR)
             if self.selected_cell in self.cell_labels:
                 self.cell_labels[self.selected_cell].configure(text_color="white")
             for arrow_label in self.cell_arrows.get(self.selected_cell, []):
@@ -153,19 +162,19 @@ class GUI:
             arrow_label.configure(text_color="black")
 
         obj = cell["obj"]
-        title = getattr(obj, "title", "Unknown")
+        title_private = getattr(obj, "title_private", "Unknown")
         logic = obj.print_logic() if hasattr(obj, "print_logic") else ""
         inputs = obj.input_buffer.get("main", []) if hasattr(obj, "input_buffer") else []
         outputs = obj.output_buffer.get("main", []) if hasattr(obj, "output_buffer") else []
         directions = cell.get("output_directions", [])
 
         self.status_var.set(
-            f"Cell ({row},{col}): {title} | logic={logic} | in={inputs} | out={outputs} | dirs={directions}"
+            f"Cell ({row},{col}): {title_private} | logic={logic} | in={inputs} | out={outputs} | dirs={directions}"
         )
 
     def refresh_board(self):
         self.build_board()
-        self.status_var.set("Board refreshed")
+        self.status_var.set("(Nothing Selected)")
 
     def run_route(self):
         try:
