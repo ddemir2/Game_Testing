@@ -86,6 +86,8 @@ class Machine:
             print(f'Output Buffer: {self.output_buffer}')
             print(f"----------------------------\n")
 
+    def modify_object(self):
+        raise TypeError("this method must be run by subclass of Machine")
 
 class Evaluator(Machine):
     def __init__(self, title_private, manufacturer, title_public='!(deflt eval)!', loud_debug=False):
@@ -167,6 +169,8 @@ class Simple_Adder(Machine):
         if new_operand not in range(1,999) or isinstance(new_operand, bool): raise ValueError("Improper operand")
         self.operand = new_operand
 
+    def modify_object(self, num):
+        self.update_operand(num)
 
 class Input_Stream(Machine):
     def __init__(self, input_data, title_private, manufacturer, title_public='!(deflt istream)!', loud_debug=False):
@@ -178,7 +182,7 @@ class Input_Stream(Machine):
         self.num_outputs = 1
         
     def print_logic(self):
-        return ""
+        return print_list(self.input_buffer["main"])
 
     def run(self):
         self.print_debug()
@@ -442,6 +446,18 @@ class Map:
             return False
 
 #-----------HELPER FUNCTIONS-------------------------
+
+def print_list(input_list) -> str:
+    if not input_list or len(input_list) == 0:
+        return None
+    elif not all(isinstance(x, int) or isinstance(x, str) for x in input_list):
+        raise TypeError("List elements must be either string or int")
+    else:
+        length = len(input_list)
+        last_element = length-1
+        output = [f'{element}, ' for element in input_list[:last_element]]
+        output.append(str(input_list[last_element]))
+        return ''.join(output)
 
 def is_evaluator(obj) -> bool:
     if isinstance(obj, Evaluator_1):

@@ -6,6 +6,14 @@ import game_utils as gu
 import game_ui as gui
 
 class General_Test(unittest.TestCase):
+    def test_print_logic_for_evaluator(self):
+        input_stream = gu.Input_Stream(input_data=[1,2,3,4,5], title_private="INPUT_STREAM", manufacturer="N/A", loud_debug=False)
+        input_stream.output_buffer['main'] = [1,2,3,4,5]
+        temp = input_stream.print_logic()
+        self.assertIsInstance(temp, str)
+        self.assertEqual(temp, '1, 2, 3, 4, 5')
+        print(f'\n\nInput Buffer.print_logic() = {temp}')
+
     def test_check_all_win_conditions(self):
         eval_1       = gu.Evaluator_1(title_private="EVAL_1", manufacturer='DD', loud_debug=False)
         eval_2       = gu.Evaluator_1(title_private="EVAL_2", manufacturer='DD', loud_debug=False)
