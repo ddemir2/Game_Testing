@@ -4,6 +4,12 @@ import time as t
 import inspect
 import random
 import copy
+import logging
+
+logging.basicConfig(
+    level=logging.DEBUG, # Capture all levels from DEBUG up to CRITICAL
+    format='%(asctime)s - %(levelname)s - %(message)s', # Output layout
+)
 
 RIGHT = [0  ,  1]
 LEFT  = [0  , -1]
@@ -16,6 +22,9 @@ DOWN_LEFT  = [1  , -1]
 DOWN_RIGHT = [1  ,  1]
 
 ZERO = 0
+MIN_ADDER_OPERAND = 0
+MAX_ADDER_OPERAND = 999
+
 GRID_SIZE = {"rows" : 4, "cols" : 4}
 GRID_SIZE["MAX_ROW_INDEX"] = (GRID_SIZE["rows"]-1) 
 GRID_SIZE["MAX_COLUMN_INDEX"] = (GRID_SIZE["cols"]-1)
@@ -24,7 +33,7 @@ CELL_TEMPLATE = {
     "status" : "empty",
     "obj"    : None,
     "output_directions" : [],
-
+    "input_directions" : [],
     } 
 
 DIRECTION_NAMES = {
@@ -86,8 +95,8 @@ class Machine:
             print(f'Output Buffer: {self.output_buffer}')
             print(f"----------------------------\n")
 
-    def modify_object(self):
-        raise TypeError("this method must be run by subclass of Machine")
+    def modify_object(self, num):
+        raise TypeError(f"this method must be run by subclass of Machine ({num})")
 
 class Evaluator(Machine):
     def __init__(self, title_private, manufacturer, title_public='!(deflt eval)!', loud_debug=False):
@@ -120,6 +129,26 @@ class Evaluator_1(Evaluator):
             self.output_buffer["main"] = [1]
         else:
             self.output_buffer["main"] = [0]
+
+class Concatenator(Machine):
+    def __init__(self, mode, title_private, manufacturer, title_public='!(deflt concat)!', loud_debug=False):
+        super().__init__(title_private, manufacturer, title_public, loud_debug)
+        self.mode = mode
+        self.num_inputs = 2
+        self.num_outputs = 1
+        if self.mode != "default": raise ValueError("concatenator only has default mode enabled")
+    
+    def run(self):
+        if not self.input_buffer['main']: raise ValueError("main input can't be null")
+        if not self.input_buffer['main']: raise ValueError("aux input can't be null")
+        temp = self.input_buffer['main'] + self.input_buffer['aux']
+        self.output_buffer['main'] = temp
+    
+    def print_logic(self):
+        return f"combine 2 lists"
+    
+    def update_mode(self):
+        raise ValueError("only default mode supported")
 
 class Splitter(Machine):
     def __init__(self, mode, title_private, manufacturer, title_public='!(deflt splitter)!', loud_debug=False):
@@ -166,7 +195,7 @@ class Simple_Adder(Machine):
         self.output_buffer["main"] = result.tolist()
     
     def update_operand(self, new_operand):
-        if new_operand not in range(1,999) or isinstance(new_operand, bool): raise ValueError("Improper operand")
+        if new_operand not in range(MIN_ADDER_OPERAND, MAX_ADDER_OPERAND) or isinstance(new_operand, bool): raise ValueError("Improper operand")
         self.operand = new_operand
 
     def modify_object(self, num):
@@ -208,13 +237,11 @@ class Map:
         col_in_bounds = (0 <= col < self.cols)
         return row_in_bounds and col_in_bounds
 
-
     def is_evaluator(self, obj):
         if isinstance(obj, Evaluator):
             return True
         else:
-            return False
-        
+            return False     
 
     def get_cell(self, row, col):
         if not self.is_in_bounds(row, col):
@@ -282,8 +309,6 @@ class Map:
             raise ValueError("install location already occupied")
         if output_directions is not None and not isinstance(output_directions, list):
             raise ValueError('Directions not entered as list')
-       
-        #self.calc_output_cells(output_directions=output_directions)
 
         cell = self.get_cell(row, col)
         cell["obj"] = obj
@@ -292,110 +317,10 @@ class Map:
         if output_directions is not None:
             for direction in output_directions:
                 cell["output_directions"].append(direction)
-
-    def new_print_grid(self):
-        print('\n\n')
-
-        for row_idx, row in enumerate(self.grid):
-            formatted_row = []
-            for cell in row:
-                display = "|------------------"
-                formatted_row.append(f"{display}")
-            print("".join(formatted_row) + '|')
-            formatted_row = []
-
-            for cell in row:
-                if UP in cell["output_directions"]:
-                    display = "|        ^         "
-                else:
-                    display = "|                  "
-                formatted_row.append(f"{display}")
-            print("".join(formatted_row) + '|')
-            formatted_row = []
-
-            for cell in row:
-                if cell['status'] == 'empty':
-                    display = '|                  '
-                else:
-                    display = '|' + cell["obj"].title_private.center(18)
-                formatted_row.append(f"{display}")
-            print("".join(formatted_row) + '|')
-            formatted_row = []
-
-            for cell in row:
-                if cell['status'] == 'empty':
-                    display = '|                  '
-                else:
-                    display = '| ' + cell["obj"].print_logic().center(16) + ' '
-                formatted_row.append(f"{display}")
-            print("".join(formatted_row) + '|')
-            formatted_row = []
-
-            for cell in row:
-                if cell['status'] == 'empty':
-                    display = '|                  '
-                elif RIGHT in cell['output_directions']:
-                    display = '|                 ' + '>'
-                elif LEFT in cell['output_directions']:
-                    display = '|<                 '
-                else:
-                    display = '|                  '
-                formatted_row.append(f"{display}")
-            print("".join(formatted_row) + '|')
-            formatted_row = []
-
-            for cell in row:
-                if cell['status'] == 'empty':
-                    display = '|                  '
-                else:
-                    display = '|   INPUT (MAIN):  '
-                formatted_row.append(f"{display}")
-            print("".join(formatted_row) + '|')
-            formatted_row = []
-
-            for cell in row:
-                if cell['status'] == 'empty':
-                    display = '|                  '
-                elif cell['status'] == 'occupied':
-                    list_just_numbers = ",".join(str(x) for x in cell["obj"].input_buffer["main"])
-                    display = '|' + list_just_numbers.center(18)
-                else:
-                    display = '|               '
-                formatted_row.append(f"{display}")
-            print("".join(formatted_row) + '|')
-            formatted_row = []
-
-            for cell in row:
-                if cell['status'] == 'empty':
-                    display = '|                  '
-                else:
-                    display = '|  OUTPUT  (MAIN): '
-                formatted_row.append(f"{display}")
-            print("".join(formatted_row) + '|')
-            formatted_row = []
-
-            for cell in row:
-                if cell['status'] == 'empty':
-                    display = '|                  '
-                elif cell['status'] == 'occupied':
-                    list_just_numbers = ",".join(str(x) for x in cell["obj"].output_buffer["main"])
-                    display = '|' + list_just_numbers.center(18)
-                else:
-                    display = '|                  '
-                formatted_row.append(f"{display}")
-            print("".join(formatted_row) + '|')
-            formatted_row = []
-
-            for cell in row:
-                if DOWN in cell["output_directions"]:
-                    display = "|        \\/        "
-                else:
-                    display = "|                  "
-                formatted_row.append(f"{display}")
-            print("".join(formatted_row) + '|')
-            formatted_row = []
-
-        print('\n\n')
+                inverted_direction = invert_direction(direction)
+                target_row, target_col, _ = self.get_outputs(row, col, [direction])
+                target_cell = self.get_cell(target_row, target_col)
+                target_cell["input_directions"].append(inverted_direction)
 
     def search_grid(self, function=None):
         collection = []
@@ -404,6 +329,10 @@ class Map:
                 if function(cell["obj"]) == True:
                     collection.append([row, col])
         return collection
+
+    def run_complex_route(self, tails : list[list[int]]) -> None:
+        if not isinstance(tails, list) or not all(isinstance(t, list) for t in tails) : raise ValueError(f"tail parameter improper: {tails}")
+
 
     def run_simple_route(self):
         # find the input stream
@@ -447,6 +376,10 @@ class Map:
 
 #-----------HELPER FUNCTIONS-------------------------
 
+def invert_direction(direction : list[int]) -> list[int]:
+    if any([x not in (-1,0,1) for x in direction]): raise ValueError(f"invalid input direction: {direction}")
+    return [x*-1 for x in direction]
+
 def print_list(input_list) -> str:
     if not input_list or len(input_list) == 0:
         return None
@@ -485,8 +418,11 @@ def uninitialized_i_o(obj) -> bool:
     else:
         return False
 
+def complex_connect_and_run(machine1, machine2):
+    pass
 
-def connect_and_run(machine1, machine2)->bool:
+
+def connect_and_run(machine1, machine2) -> None:
     '''
     Calls run() member method on machine 1, copies relevant output(s)
     from machine 1 and passes it to machine 2's input(s) via the 
@@ -494,8 +430,6 @@ def connect_and_run(machine1, machine2)->bool:
 
     PARAMETERS: machine1 and machine2, which must be subclasses
     of Machine.
-
-    RETURNS: True upon success, False upon failure
     '''
 
     if not isinstance(machine1, Machine) or type(machine1) == Machine: 
@@ -508,7 +442,6 @@ def connect_and_run(machine1, machine2)->bool:
         raise ValueError("Machine1 Input Buffer is empty or null")
 
     temp = None
-    success = True
 
     try:
         machine1.run()
@@ -516,8 +449,12 @@ def connect_and_run(machine1, machine2)->bool:
         if not temp: 
             raise ValueError("machine1 output is null")
         machine2.ingest_data(data=temp, channel='main', method='replace')
-    except:
-        print(f'Unspecified error: {Exception}')
-        success = False
-
-    return success
+    except TypeError as Te:
+        logging.error(f'Typerror: {Te}')
+        raise
+    except ValueError as Ve:
+        logging.error(f'Value Error: {Ve}')
+        raise
+    except Exception as e:
+        logging.error(f'Unspecified Error: {e}')
+        raise

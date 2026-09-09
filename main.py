@@ -1,7 +1,7 @@
 '''
-Version 1.5
-Ice Fox
-Additional UI Improvements; change machine mechanic implemented
+Version 1.6
+Earth Fox
+Input Directions feature and setter implemented; complex route needed next
 '''
 
 import game_utils as gu

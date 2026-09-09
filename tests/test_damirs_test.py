@@ -6,13 +6,57 @@ import game_utils as gu
 import game_ui as gui
 
 class General_Test(unittest.TestCase):
+    def test_machine_with_inverted_directions(self):
+        splitter_1 = gu.Splitter(mode='default', title_private='spt_1', manufacturer='N/A',
+                                 title_public='splitter', loud_debug=False)
+        mymap = gu.Map(4, 4, loud_debug=False)
+        mymap.install_machine(splitter_1, 
+                                 [0,0], output_directions=[gu.DOWN, gu.DOWN_RIGHT, gu.RIGHT])
+        temp_1 = mymap.grid[1][0]['input_directions']
+        temp_2 = mymap.grid[1][1]['input_directions']
+        temp_3 = mymap.grid[0][1]['input_directions']
+        self.assertEqual(temp_1, [gu.UP])
+        self.assertEqual(temp_2, [gu.UP_LEFT])
+        self.assertEqual(temp_3, [gu.LEFT])
+
+        with self.assertRaises(ValueError):
+            mymap.install_machine(splitter_1, [2,0], output_directions=[gu.DOWN, gu.LEFT, gu.RIGHT])
+    
+
+    def test_helper_invert_direction(self):
+        temp_a = gu.RIGHT
+        temp_b = gu.invert_direction(temp_a)
+        print(temp_b)
+        self.assertEqual(temp_b, gu.LEFT)
+
+        temp_c = [2,0]
+        with self.assertRaises(ValueError):
+            gu.invert_direction(temp_c)
+    
+    def test_unit_test_concatenator(self):
+        concat = gu.Concatenator(title_private='concat_1', manufacturer='Siemens', mode='default', title_public='concatenator', loud_debug=False)
+        concat.input_buffer['main'] = [1,2,3]
+        concat.input_buffer['aux']  = [4,5,6,7]
+        concat.run()
+        temp = concat.output_buffer['main']
+        self.assertEqual(temp, [1,2,3,4,5,6,7])
+        self.assertEqual(len(temp), 7)
+
+        concat.input_buffer['main'] = None
+        concat.input_buffer['aux']  = [4,5,6,7]
+        concat.output_buffer['main'] = []
+        with self.assertRaises(ValueError):
+            concat.run()
+        temp = concat.output_buffer['main']
+
+   
     def test_print_logic_for_evaluator(self):
         input_stream = gu.Input_Stream(input_data=[1,2,3,4,5], title_private="INPUT_STREAM", manufacturer="N/A", loud_debug=False)
         input_stream.output_buffer['main'] = [1,2,3,4,5]
         temp = input_stream.print_logic()
         self.assertIsInstance(temp, str)
         self.assertEqual(temp, '1, 2, 3, 4, 5')
-        print(f'\n\nInput Buffer.print_logic() = {temp}')
+        #print(f'\n\nInput Buffer.print_logic() = {temp}')
 
     def test_check_all_win_conditions(self):
         eval_1       = gu.Evaluator_1(title_private="EVAL_1", manufacturer='DD', loud_debug=False)

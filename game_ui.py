@@ -83,6 +83,11 @@ class GUI:
 
         refresh_button.pack(side="left", padx=5, pady=5)
 
+    def _bind_cell_events(self, widget, row, col):
+        widget.bind("<Button-1>", lambda e, r=row, c=col: self.on_cell_click(r, c))
+        widget.bind("<Enter>", lambda e, r=row, c=col: self.show_tooltip(r, c))
+        widget.bind("<Leave>", lambda e: self.hide_tooltip())
+
     def build_board(self):
         self.hide_tooltip()
         for widget in self.cell_frame.winfo_children():
@@ -121,9 +126,7 @@ class GUI:
                         text_color="white",
                     )
                     label.grid(row=0, column=0, sticky="nsew")
-                    label.bind("<Button-1>", lambda e, r=row, c=col: self.on_cell_click(r, c))
-                    label.bind("<Enter>", lambda e, r=row, c=col: self.show_tooltip(r, c))
-                    label.bind("<Leave>", lambda e: self.hide_tooltip())
+                    self._bind_cell_events(label, row, col)
 
                     directions = cell.get("output_directions", [])
                     arrow_labels = []
@@ -143,9 +146,7 @@ class GUI:
                         arrow_label.bind("<Button-1>", lambda e, r=row, c=col: self.on_cell_click(r, c))
                         arrow_labels.append(arrow_label)
 
-                    box.bind("<Button-1>", lambda e, r=row, c=col: self.on_cell_click(r, c))
-                    box.bind("<Enter>", lambda e, r=row, c=col: self.show_tooltip(r, c))
-                    box.bind("<Leave>", lambda e: self.hide_tooltip())
+                    self._bind_cell_events(box, row, col)
 
                 self.cell_boxes[(row, col)] = box
                 self.cell_labels[(row, col)] = label
