@@ -71,9 +71,13 @@ class Machine:
 
     def ingest_data(self, data, channel='main', method='replace'):
         if not isinstance(data, list): raise ValueError("Ingest type is not list!")
-        if method != 'replace': raise ValueError("Only replace implemented")
-        if method == 'replace':
+        if method == 'append':
+            self.input_buffer[channel] = self.input_buffer[channel] + data
+        elif method == 'replace':
             self.input_buffer[channel] = list(data)
+        else: 
+            raise ValueError(f"uncrecognized ingest method: {method}")
+
         self.print_debug()
 
     def run(self):
@@ -341,6 +345,8 @@ class Map:
         # find input stream's output
         direction_output = self.get_output_directions(row_input_stream, col_input_stream)
         row_output, col_output, obj_output = self.get_outputs(row_input_stream, col_input_stream, direction_output)
+        if obj_output is None:
+            raise ValueError("Cannot output to empty cell")
         
         # set up loop and run
         obj_current = obj_input_stream

@@ -1,7 +1,7 @@
 '''
-Version 1.6
-Earth Fox
-Input Directions feature and setter implemented; complex route needed next
+Version 1.7
+Ice Fox II
+Ingest append method implemented and tested
 '''
 
 import game_utils as gu

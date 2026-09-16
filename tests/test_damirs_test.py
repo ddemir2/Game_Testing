@@ -4,8 +4,18 @@ import unittest
 
 import game_utils as gu
 import game_ui as gui
+from collections import deque
 
 class General_Test(unittest.TestCase):
+    def test_ingest_data_append_method(self):
+        adder = gu.Simple_Adder(operand=1, title_private='adder1',
+                                title_public='add 1', manufacturer='DD',)
+        adder.input_buffer['main'] = [1,2,3]
+        adder.ingest_data([1], channel='main', method='append')
+        print(adder.input_buffer['main'])
+        self.assertEqual(4, len(adder.input_buffer['main']))
+        self.assertEqual([1,2,3,1], adder.input_buffer['main'])
+
     def test_machine_with_inverted_directions(self):
         splitter_1 = gu.Splitter(mode='default', title_private='spt_1', manufacturer='N/A',
                                  title_public='splitter', loud_debug=False)
