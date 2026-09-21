@@ -179,7 +179,7 @@ class GUI:
         title_private = getattr(obj, "title_private", "Unknown")
         logic = obj.print_logic() if hasattr(obj, "print_logic") else ""
         inputs = obj.input_buffer.get("main", []) if hasattr(obj, "input_buffer") else []
-        outputs = obj.output_buffer.get("main", []) if hasattr(obj, "output_buffer") else []
+        outputs = obj.output_channels.get("main", []) if hasattr(obj, "output_channels") else []
         directions = cell.get("output_directions", [])
 
         self.status_var.set(
@@ -260,7 +260,7 @@ class GUI:
         title_private = getattr(obj, "title_private", "Unknown")
         logic = obj.print_logic() if hasattr(obj, "print_logic") else ""
         inputs = obj.input_buffer.get("main", []) if hasattr(obj, "input_buffer") else []
-        outputs = obj.output_buffer.get("main", []) if hasattr(obj, "output_buffer") else []
+        outputs = obj.output_channels.get("main", []) if hasattr(obj, "output_channels") else []
         directions = cell.get("output_directions", [])
         text = f"Cell ({row},{col}): {title_private} | logic={logic} | in={inputs} | out={outputs} | dirs={directions}"
 

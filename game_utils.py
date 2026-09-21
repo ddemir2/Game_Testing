@@ -1,8 +1,7 @@
-import pandas as pd
+#import pandas as pd
 import numpy as np
-import time as t
+#import time as t
 import inspect
-import random
 import copy
 import logging
 from collections import deque
@@ -27,16 +26,13 @@ MIN_ADDER_OPERAND = 0
 MAX_ADDER_OPERAND = 999
 INPUT_NUM_MIN = 1
 INPUT_NUM_MAX = 3
+CLASSIC_TESTING_GAME_BOARD_SIZE = 4
 
-GRID_SIZE = {"rows" : 4, "cols" : 4}
-GRID_SIZE["MAX_ROW_INDEX"] = (GRID_SIZE["rows"]-1) 
-GRID_SIZE["MAX_COLUMN_INDEX"] = (GRID_SIZE["cols"]-1)
 
 CELL_TEMPLATE = {
     "status" : "empty",
     "obj"    : None,
     "output_directions" : [],
-    "input_directions" : [],
     } 
 
 DIRECTION_NAMES = {
@@ -62,7 +58,7 @@ class Machine:
         self.title_public = title_public
         self.manufacturer = manufacturer
         self.input_buffer = {"main" : [], "aux" : []}
-        self.output_buffer = {"main" : [], "aux" : []}
+        self.output_channels = {"main" : [], "aux" : []}
         self.loud_debug = loud_debug
         self.num_inputs  = None
         self.num_outputs = None
@@ -102,9 +98,9 @@ class Machine:
                 raise ValueError(f'Error. Num of inputs({n}); Input Buffer({str(temp)})')
                 
     def get_output(self, channel) -> list:
-        if not self.output_buffer[channel] or len(self.output_buffer[channel]) == 0:
+        if not self.output_channels[channel] or len(self.output_channels[channel]) == 0:
             raise ValueError("cannot output an empty list")
-        return self.output_buffer[channel]
+        return self.output_channels[channel]
 
     def ingest_data(self, data, channel='main', method='replace'):
         if not isinstance(data, list): raise ValueError("Ingest type is not list!")
@@ -133,7 +129,7 @@ class Machine:
             print(f"\n[MACHINE DEBUG]  Curr Line: {inspect.currentframe().f_lineno}, Calling Line : {inspect.currentframe().f_back.f_lineno}, Calling Function: {inspect.currentframe().f_back.f_code.co_name}()")
             print(f'{self.title_private} ({self.manufacturer})')
             print(f'Input Buffer: {self.input_buffer}')
-            print(f'Output Buffer: {self.output_buffer}')
+            print(f'Output Buffer: {self.output_channels}')
             print(f"----------------------------\n")
 
     def modify_object(self, num):
@@ -166,9 +162,9 @@ class Evaluator_1(Evaluator):
         self.print_debug()
         if len(self.input_buffer["main"]) == 0 or self.input_buffer["main"] is None: raise ValueError("Cannot evaluate empty input buffer")
         if all(x > 10 for x in self.input_buffer["main"]):
-            self.output_buffer["main"] = [1]
+            self.output_channels["main"] = [1]
         else:
-            self.output_buffer["main"] = [0]
+            self.output_channels["main"] = [0]
 
 class Concatenator(Machine):
     def __init__(self, mode, title_private, manufacturer, title_public='!(deflt concat)!', loud_debug=False):
@@ -182,7 +178,7 @@ class Concatenator(Machine):
         if not self.input_buffer['main']: raise ValueError("main input can't be null")
         if not self.input_buffer['main']: raise ValueError("aux input can't be null")
         temp = self.input_buffer['main'] + self.input_buffer['aux']
-        self.output_buffer['main'] = temp
+        self.output_channels['main'] = temp
     
     def print_logic(self):
         return f"combine 2 lists"
@@ -209,8 +205,8 @@ class Splitter(Machine):
         half_len = length // 2
         main_output = temp[:half_len]
         aux_output  = temp[half_len:]
-        self.output_buffer['main'] = main_output.copy()
-        self.output_buffer['aux']  = aux_output.copy()
+        self.output_channels['main'] = main_output.copy()
+        self.output_channels['aux']  = aux_output.copy()
 
     def print_logic(self):
         return f"splits list into 2"
@@ -232,7 +228,7 @@ class Simple_Adder(Machine):
     def run(self):
         temp = np.array(self.input_buffer["main"])
         result = np.add(temp, self.operand)
-        self.output_buffer["main"] = result.tolist()
+        self.output_channels["main"] = result.tolist()
     
     def update_operand(self, new_operand):
         if new_operand not in range(MIN_ADDER_OPERAND, MAX_ADDER_OPERAND) or isinstance(new_operand, bool): raise ValueError("Improper operand")
@@ -246,7 +242,7 @@ class Input_Stream(Machine):
         super().__init__(title_private, manufacturer, title_public, loud_debug)
         if not input_data or not isinstance(input_data, list): raise ValueError("input failure")
         self.input_buffer["main"] = input_data
-        self.output_buffer["main"] = []
+        self.output_channels["main"] = []
         self.num_inputs  = 1
         self.num_outputs = 1
         
@@ -257,7 +253,7 @@ class Input_Stream(Machine):
         self.print_debug()
         if not self.input_buffer["main"] or self.input_buffer["main"] == []:
             raise ValueError("Cannot run input stream with empty input buffer")
-        self.output_buffer["main"] = self.input_buffer["main"]
+        self.output_channels["main"] = self.input_buffer["main"]
 
 
 class Map:
@@ -361,10 +357,6 @@ class Map:
         if output_directions is not None:
             for direction in output_directions:
                 cell["output_directions"].append(direction)
-                inverted_direction = invert_direction(direction)
-                target_row, target_col, _ = self.get_outputs(row, col, [direction])
-                target_cell = self.get_cell(target_row, target_col)
-                target_cell["input_directions"].append(inverted_direction)
 
     def search_grid(self, function=None):
         collection = []

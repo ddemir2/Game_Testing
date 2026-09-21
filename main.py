@@ -1,7 +1,7 @@
 '''
-Version 1.8
-Melted Ice Fox
-Run complex route implemented as BFS
+Version 1.9
+Melted Ice Fox II
+Begin simplify refactor. Saving before I turn input_buffer into a list.
 '''
 
 import game_utils as gu
@@ -13,7 +13,7 @@ if __name__ == "__main__":
     adder_3      = gu.Simple_Adder(operand = 6,            title_private="ADDER_3",      manufacturer="DD",  title_public= 'Adder',         loud_debug=False)
     input_stream = gu.Input_Stream(input_data=[1,2,6,4,2], title_private="INPUT_STREAM", manufacturer="N/A", title_public='Input',          loud_debug=False)
     eval_1       = gu.Evaluator_1(                         title_private="EVAL_1",       manufacturer='DD',  title_public='Output',  loud_debug=False)
-    mymap        = gu.Map(gu.GRID_SIZE["rows"], gu.GRID_SIZE["cols"], loud_debug=True)
+    mymap        = gu.Map(gu.CLASSIC_TESTING_GAME_BOARD_SIZE, gu.CLASSIC_TESTING_GAME_BOARD_SIZE, loud_debug=True)
 
     mymap.install_machine(input_stream, [0,0], output_directions=[gu.DOWN])
     mymap.install_machine(adder_1,      [1,0], output_directions=[gu.UP_RIGHT])

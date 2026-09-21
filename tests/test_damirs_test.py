@@ -1,5 +1,3 @@
-
-
 import unittest
 
 import game_utils as gu
@@ -30,8 +28,8 @@ class General_Test(unittest.TestCase):
         mymap.install_machine(eval1,    [1,5], [gu.END]);                   
         mymap.install_machine(eval2,    [2,5], [gu.END]);           
         mymap.run_complex_route(elements=[[0,0],[1,0]])
-        self.assertEqual(eval1.output_buffer['main'], [1])
-        self.assertEqual(eval2.output_buffer['main'], [1])
+        self.assertEqual(eval1.output_channels['main'], [1])
+        self.assertEqual(eval2.output_channels['main'], [1])
 
     def test_ready_input_count_unit_test(self):
         concat = gu.Concatenator(mode='default', title_private="concat1", manufacturer="DD", title_public="concatenator")
@@ -79,13 +77,13 @@ class General_Test(unittest.TestCase):
 
         self.assertEqual(concat1.input_buffer['main'], [1])
         self.assertEqual(concat1.input_buffer['aux'] , [2])
-        self.assertEqual(add1.output_buffer['main'], [-4,-3])
-        self.assertEqual(splt1.output_buffer['main'], [-4])
-        self.assertEqual(splt1.output_buffer['aux'], [-3])
-        self.assertEqual(add2.output_buffer['main'], [16])
-        self.assertEqual(add3.output_buffer['main'], [22])
-        self.assertEqual(eval1.output_buffer['main'], [1])
-        self.assertEqual(eval2.output_buffer['main'], [1])
+        self.assertEqual(add1.output_channels['main'], [-4,-3])
+        self.assertEqual(splt1.output_channels['main'], [-4])
+        self.assertEqual(splt1.output_channels['aux'], [-3])
+        self.assertEqual(add2.output_channels['main'], [16])
+        self.assertEqual(add3.output_channels['main'], [22])
+        self.assertEqual(eval1.output_channels['main'], [1])
+        self.assertEqual(eval2.output_channels['main'], [1])
 
         self.assertEqual(True, obj_in1.ready_input_count())
         self.assertEqual(True, obj_in2.ready_input_count())
@@ -107,22 +105,6 @@ class General_Test(unittest.TestCase):
         self.assertEqual(4, len(adder.input_buffer['main']))
         self.assertEqual([1,2,3,1], adder.input_buffer['main'])
 
-    def test_machine_with_inverted_directions(self):
-        splitter_1 = gu.Splitter(mode='default', title_private='spt_1', manufacturer='N/A',
-                                 title_public='splitter', loud_debug=False)
-        mymap = gu.Map(4, 4, loud_debug=False)
-        mymap.install_machine(splitter_1, 
-                                 [0,0], output_directions=[gu.DOWN, gu.DOWN_RIGHT, gu.RIGHT])
-        temp_1 = mymap.grid[1][0]['input_directions']
-        temp_2 = mymap.grid[1][1]['input_directions']
-        temp_3 = mymap.grid[0][1]['input_directions']
-        self.assertEqual(temp_1, [gu.UP])
-        self.assertEqual(temp_2, [gu.UP_LEFT])
-        self.assertEqual(temp_3, [gu.LEFT])
-
-        with self.assertRaises(ValueError):
-            mymap.install_machine(splitter_1, [2,0], output_directions=[gu.DOWN, gu.LEFT, gu.RIGHT])
-    
 
     def test_helper_invert_direction(self):
         temp_a = gu.RIGHT
@@ -139,21 +121,21 @@ class General_Test(unittest.TestCase):
         concat.input_buffer['main'] = [1,2,3]
         concat.input_buffer['aux']  = [4,5,6,7]
         concat.run()
-        temp = concat.output_buffer['main']
+        temp = concat.output_channels['main']
         self.assertEqual(temp, [1,2,3,4,5,6,7])
         self.assertEqual(len(temp), 7)
 
         concat.input_buffer['main'] = None
         concat.input_buffer['aux']  = [4,5,6,7]
-        concat.output_buffer['main'] = []
+        concat.output_channels['main'] = []
         with self.assertRaises(ValueError):
             concat.run()
-        temp = concat.output_buffer['main']
+        temp = concat.output_channels['main']
 
    
     def test_print_logic_for_evaluator(self):
         input_stream = gu.Input_Stream(input_data=[1,2,3,4,5], title_private="INPUT_STREAM", manufacturer="N/A", loud_debug=False)
-        input_stream.output_buffer['main'] = [1,2,3,4,5]
+        input_stream.output_channels['main'] = [1,2,3,4,5]
         temp = input_stream.print_logic()
         self.assertIsInstance(temp, str)
         self.assertEqual(temp, '1, 2, 3, 4, 5')
@@ -165,7 +147,7 @@ class General_Test(unittest.TestCase):
         eval_3       = gu.Evaluator_1(title_private="EVAL_3", manufacturer='DD', loud_debug=False)
         eval_4       = gu.Evaluator_1(title_private="EVAL_4", manufacturer='DD', loud_debug=False)
         eval_5       = gu.Evaluator_1(title_private="EVAL_5", manufacturer='DD', loud_debug=False)
-        mymap        = gu.Map(gu.GRID_SIZE["rows"], gu.GRID_SIZE["cols"], loud_debug=True)
+        mymap        = gu.Map(gu.CLASSIC_TESTING_GAME_BOARD_SIZE, gu.CLASSIC_TESTING_GAME_BOARD_SIZE, loud_debug=True)
 
         mymap.install_machine(eval_1, [0,0], output_directions=[gu.END])
         mymap.install_machine(eval_2, [1,1], output_directions=[gu.END])
@@ -177,46 +159,46 @@ class General_Test(unittest.TestCase):
             mymap.check_all_win_conditions()
         
         for robot in (eval_1, eval_2, eval_3, eval_4, eval_5):
-            robot.output_buffer['main'] = [0]
+            robot.output_channels['main'] = [0]
         self.assertEqual(mymap.check_all_win_conditions(),0)
 
         for robot in (eval_1, eval_2, eval_3, eval_4, eval_5):
-            robot.output_buffer['main'] = [1]
+            robot.output_channels['main'] = [1]
         self.assertEqual(mymap.check_all_win_conditions(),1)
 
         for robot in (eval_1, eval_2, eval_3):
-            robot.output_buffer['main'] = [1]
+            robot.output_channels['main'] = [1]
         for robot in (eval_4, eval_5):
-            robot.output_buffer['main'] = [0]
+            robot.output_channels['main'] = [0]
         self.assertEqual(mymap.check_all_win_conditions(),0)
 
 
     def test_unit_test_for_evaluator_successful_check(self):
         eval_1       = gu.Evaluator_1(title_private="EVAL_1", manufacturer='DD', loud_debug=False)
-        mymap        = gu.Map(gu.GRID_SIZE["rows"], gu.GRID_SIZE["cols"], loud_debug=True)
+        mymap        = gu.Map(gu.CLASSIC_TESTING_GAME_BOARD_SIZE, gu.CLASSIC_TESTING_GAME_BOARD_SIZE, loud_debug=True)
         mymap.install_machine(eval_1, [1,3], output_directions=[gu.END])
 
         temp = mymap.get_obj_at_coordinates(row=1, col=3)
         self.assertIsNotNone(temp, "object evaluates to None")
         self.assertIsInstance(temp, gu.Evaluator, "object is not an Evaluator subclass")
-        temp.output_buffer['main'] = None
+        temp.output_channels['main'] = None
         
         with self.assertRaises(ValueError):
             temp.check_success()
 
-        temp.output_buffer['main'] = []
+        temp.output_channels['main'] = []
         with self.assertRaises(ValueError):
             temp.check_success()
 
-        temp.output_buffer['main'] = [1,2]
+        temp.output_channels['main'] = [1,2]
         with self.assertRaises(ValueError):
             temp.check_success()
 
-        temp.output_buffer['main'] = [2]
+        temp.output_channels['main'] = [2]
         with self.assertRaises(ValueError):
             temp.check_success()
 
-        temp.output_buffer['main'] = [1]
+        temp.output_channels['main'] = [1]
         temp_output = temp.check_success()
         self.assertEqual(temp_output, 1)
         self.assertIsInstance(temp_output, int)
@@ -228,7 +210,7 @@ class General_Test(unittest.TestCase):
         eval_3       = gu.Evaluator_1(title_private="EVAL_3", manufacturer='DD', loud_debug=False)
         eval_4       = gu.Evaluator_1(title_private="EVAL_4", manufacturer='DD', loud_debug=False)
         eval_5       = gu.Evaluator_1(title_private="EVAL_5", manufacturer='DD', loud_debug=False)
-        mymap        = gu.Map(gu.GRID_SIZE["rows"], gu.GRID_SIZE["cols"], loud_debug=True)
+        mymap        = gu.Map(gu.CLASSIC_TESTING_GAME_BOARD_SIZE, gu.CLASSIC_TESTING_GAME_BOARD_SIZE, loud_debug=True)
 
         mymap.install_machine(eval_1, [0,0], output_directions=[gu.END])
         mymap.install_machine(eval_2, [1,1], output_directions=[gu.END])
@@ -246,7 +228,7 @@ class General_Test(unittest.TestCase):
         adder_3      = gu.Simple_Adder(operand = 6,            title_private="ADDER_3",      manufacturer="DD",  loud_debug=False)
         input_stream = gu.Input_Stream(input_data=[1,2,6,4,2], title_private="INPUT_STREAM", manufacturer="N/A", loud_debug=False)
         eval_1       = gu.Evaluator_1(                         title_private="EVAL_1",       manufacturer='DD',  loud_debug=False)
-        mymap        = gu.Map(gu.GRID_SIZE["rows"], gu.GRID_SIZE["cols"], loud_debug=True)
+        mymap        = gu.Map(gu.CLASSIC_TESTING_GAME_BOARD_SIZE, gu.CLASSIC_TESTING_GAME_BOARD_SIZE, loud_debug=True)
 
         mymap.install_machine(input_stream, [0,0], output_directions=[gu.DOWN])
         mymap.install_machine(adder_1,      [1,0], output_directions=[gu.UP_RIGHT])
@@ -254,7 +236,7 @@ class General_Test(unittest.TestCase):
         mymap.install_machine(adder_3,      [1,2], output_directions=[gu.RIGHT])
         mymap.install_machine(eval_1,       [1,3], output_directions=[gu.END])
         mymap.run_simple_route()
-        output = mymap.get_cell(1,3)['obj'].output_buffer['main']
+        output = mymap.get_cell(1,3)['obj'].output_channels['main']
         self.assertEqual(output, [1])
     
     def test_exception_on_non_default_mode(self):
