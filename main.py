@@ -1,7 +1,7 @@
 '''
-Version 1.7
-Ice Fox II
-Ingest append method implemented and tested
+Version 1.8
+Melted Ice Fox
+Run complex route implemented as BFS
 '''
 
 import game_utils as gu

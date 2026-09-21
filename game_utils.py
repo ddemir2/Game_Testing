@@ -5,6 +5,7 @@ import inspect
 import random
 import copy
 import logging
+from collections import deque
 
 logging.basicConfig(
     level=logging.DEBUG, # Capture all levels from DEBUG up to CRITICAL
@@ -24,6 +25,8 @@ DOWN_RIGHT = [1  ,  1]
 ZERO = 0
 MIN_ADDER_OPERAND = 0
 MAX_ADDER_OPERAND = 999
+INPUT_NUM_MIN = 1
+INPUT_NUM_MAX = 3
 
 GRID_SIZE = {"rows" : 4, "cols" : 4}
 GRID_SIZE["MAX_ROW_INDEX"] = (GRID_SIZE["rows"]-1) 
@@ -64,6 +67,40 @@ class Machine:
         self.num_inputs  = None
         self.num_outputs = None
 
+    def get_preferred_input_channel(self, method = 'default') -> str:
+        match self.num_inputs:
+            case 1:
+                return 'main' if self.input_buffer['main'] == [] else None
+            case 2:
+                if self.input_buffer['main'] == [] and self.input_buffer['aux'] == []:
+                    return 'main'
+                elif self.input_buffer['main'] != [] and self.input_buffer['aux'] == []:
+                    return 'aux'
+                elif self.input_buffer['main'] != [] and self.input_buffer['aux'] != []:
+                    return None
+                else:
+                    raise ValueError(f'Unexpected inpout buffer configuration')
+            case 3:
+                raise ValueError(f'Unexpected inpout buffer configuration')
+            case _:
+                raise ValueError(f'Unexpected inpout buffer configuration')
+
+    def ready_input_count(self):
+        n    = self.num_inputs
+        temp = self.input_buffer
+        if n is None or not isinstance(n,int): raise TypeError(f'Input count is invalid type: {n}')
+        match n:
+            case 1:
+                return len(temp['main']) > 0
+            case 2:
+                relevant_keys = {k for k in ('main', 'aux') if len(temp.get(k, [])) > 0}
+                return len(relevant_keys) == 2
+            case 3:
+                relevant_keys = {k for k in ('main', 'aux', 'aux2') if len(temp.get(k, [])) > 0}
+                return len(relevant_keys) == 3
+            case _:
+                raise ValueError(f'Error. Num of inputs({n}); Input Buffer({str(temp)})')
+                
     def get_output(self, channel) -> list:
         if not self.output_buffer[channel] or len(self.output_buffer[channel]) == 0:
             raise ValueError("cannot output an empty list")
@@ -102,6 +139,7 @@ class Machine:
     def modify_object(self, num):
         raise TypeError(f"this method must be run by subclass of Machine ({num})")
 
+
 class Evaluator(Machine):
     def __init__(self, title_private, manufacturer, title_public='!(deflt eval)!', loud_debug=False):
         super().__init__(title_private, manufacturer, title_public, loud_debug)
@@ -114,8 +152,6 @@ class Evaluator(Machine):
             return temp_num
         else:
             raise ValueError(f"output of Evaluator object is invalid: {temp_num}")
-
-
 
 class Evaluator_1(Evaluator):
     def __init__(self, title_private, manufacturer, title_public='!(deflt eval_1)!', loud_debug=False):
@@ -305,6 +341,10 @@ class Map:
         obj_output = self.grid[row_output][col_output]['obj']
         return row_output, col_output, obj_output
 
+    def get_all_output_cells(self, row, col):
+        output_directions = self.get_output_directions(row, col)
+        return [self.get_outputs(row, col, [direction]) for direction in output_directions]
+
     def install_machine(self, obj, install_location, output_directions):
         row, col = install_location
         if not self.is_in_bounds(row, col):
@@ -334,9 +374,61 @@ class Map:
                     collection.append([row, col])
         return collection
 
-    def run_complex_route(self, tails : list[list[int]]) -> None:
-        if not isinstance(tails, list) or not all(isinstance(t, list) for t in tails) : raise ValueError(f"tail parameter improper: {tails}")
+    def run_complex_route(self, elements : list[list[int]]) -> None:
+        if not elements or not isinstance(elements, list): raise TypeError(f"data structure is incorrect")
+        if not all(isinstance(t, list) for t in elements) : raise TypeError(f"individual elements are improper type: {elements}")
 
+        output_channels = ['main', 'aux', 'aux2']
+        max_iterations = self.rows * self.cols * len(output_channels)
+        frontier = deque(elements)
+        visited = set()
+        iterations = 0
+
+        while frontier:
+            iterations += 1
+            if iterations > max_iterations:
+                logging.error('endless loop detected')
+                break
+
+            processing_row, processing_col = frontier.popleft()
+            if not self.is_in_bounds(processing_row, processing_col):
+                continue
+            if self.is_empty(processing_row, processing_col):
+                continue
+
+            key = (processing_row, processing_col)
+            if key in visited:
+                continue
+
+            obj_current = self.get_obj_at_coordinates(processing_row, processing_col)
+
+            if isinstance(obj_current, Evaluator):
+                if obj_current.ready_input_count():
+                    obj_current.run()
+                    visited.add(key)
+                continue
+
+            if not obj_current.ready_input_count():
+                continue
+
+            obj_current.run()
+            visited.add(key)
+
+            output_directions = self.get_output_directions(processing_row, processing_col)
+            for index, direction in enumerate(output_directions):
+                row_neighbor, col_neighbor, obj_neighbor = self.get_outputs(processing_row, processing_col, [direction])
+                if obj_neighbor is None:
+                    raise ValueError("Cannot output to empty cell")
+
+                output_channel = output_channels[index]
+                data = obj_current.get_output(output_channel)
+                input_channel = self.get_preferred_input_channel(row_neighbor, col_neighbor)
+                obj_neighbor.ingest_data(data=data, channel=input_channel, method='append')
+
+                frontier.append([row_neighbor, col_neighbor])
+
+    def get_preferred_input_channel(self, row, col):
+        return self.get_cell(row, col)['obj'].get_preferred_input_channel() 
 
     def run_simple_route(self):
         # find the input stream
@@ -428,7 +520,9 @@ def complex_connect_and_run(machine1, machine2):
     pass
 
 
-def connect_and_run(machine1, machine2) -> None:
+def connect_and_run(machine1 : Machine, machine2 : Machine,
+                    output_channel : str = 'main',
+                    input_channel : str = 'main') -> None:
     '''
     Calls run() member method on machine 1, copies relevant output(s)
     from machine 1 and passes it to machine 2's input(s) via the 
@@ -442,19 +536,16 @@ def connect_and_run(machine1, machine2) -> None:
         raise ValueError("improper class")
     if not isinstance(machine2, Machine) or type(machine2) == Machine: 
         raise ValueError("improper class")
-    if machine1.num_outputs != 1 or machine2.num_inputs != 1: 
-        raise ValueError("Only 1 output to 1 input is supported at this time")
     if not machine1.input_buffer["main"] or machine1.input_buffer["main"] == []: 
         raise ValueError("Machine1 Input Buffer is empty or null")
 
     temp = None
-
     try:
         machine1.run()
-        temp = machine1.get_output('main')
+        temp = machine1.get_output(output_channel)
         if not temp: 
             raise ValueError("machine1 output is null")
-        machine2.ingest_data(data=temp, channel='main', method='replace')
+        machine2.ingest_data(data=temp, channel=input_channel, method='append')
     except TypeError as Te:
         logging.error(f'Typerror: {Te}')
         raise

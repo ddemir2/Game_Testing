@@ -7,6 +7,97 @@ import game_ui as gui
 from collections import deque
 
 class General_Test(unittest.TestCase):
+    def test_complex_route(self):
+        in1     = gu.Input_Stream([1], "in1", "DD", "Input: 1")
+        in2     = gu.Input_Stream([2], "in2", "DD", "Input: 2")
+        concat1 = gu.Concatenator('default', "concat1", "DD", "combine")
+        add1    = gu.Simple_Adder(-5, "sub 5", "DD", "subtract 5")
+        splt1   = gu.Splitter('default', "splt1", "DD", "split")
+        add2    = gu.Simple_Adder(20, "add 20", "DD", "add 20")
+        add3    = gu.Simple_Adder(25, "add 25", "DD", "add 25")
+        eval1   = gu.Evaluator_1("eval1", "DD", "all > 10 ?")
+        eval2   = gu.Evaluator_1("eval2", "DD", "all > 10 ?")
+        mymap   = gu.Map(4,6)
+
+        mymap.install_machine(in1,      [0,0], [gu.DOWN_RIGHT]);            
+        mymap.install_machine(in2,      [1,0], [gu.RIGHT]);                 
+        mymap.install_machine(concat1,  [1,1], [gu.RIGHT]);                 
+        self.assertEqual(False, concat1.ready_input_count())
+        mymap.install_machine(add1,     [1,2], [gu.RIGHT]);               
+        mymap.install_machine(splt1,    [1,3], [gu.RIGHT, gu.DOWN_RIGHT]);  
+        mymap.install_machine(add2,     [1,4], [gu.RIGHT]);                
+        mymap.install_machine(add3,     [2,4], [gu.RIGHT]);                 
+        mymap.install_machine(eval1,    [1,5], [gu.END]);                   
+        mymap.install_machine(eval2,    [2,5], [gu.END]);           
+        mymap.run_complex_route(elements=[[0,0],[1,0]])
+        self.assertEqual(eval1.output_buffer['main'], [1])
+        self.assertEqual(eval2.output_buffer['main'], [1])
+
+    def test_ready_input_count_unit_test(self):
+        concat = gu.Concatenator(mode='default', title_private="concat1", manufacturer="DD", title_public="concatenator")
+        self.assertEqual(False, concat.ready_input_count())
+        concat.input_buffer['main'].append(1)
+        self.assertEqual(False, concat.ready_input_count())
+        concat.input_buffer['aux'].append(3)
+        self.assertEqual(True, concat.ready_input_count())
+
+
+    def test_run_complex_route_endless_loop_safety_mechanism(self):
+        mymap = gu.Map(3,3)
+        mymap.run_complex_route([[1,2], [3,4]])
+
+    def test_manual_route_with_splitters_and_concatenators(self):
+        in1     = gu.Input_Stream([1], "in1", "DD", "Input: 1")
+        in2     = gu.Input_Stream([2], "in2", "DD", "Input: 2")
+        concat1 = gu.Concatenator('default', "concat1", "DD", "combine")
+        add1    = gu.Simple_Adder(-5, "sub 5", "DD", "subtract 5")
+        splt1   = gu.Splitter('default', "splt1", "DD", "split")
+        add2    = gu.Simple_Adder(20, "add 20", "DD", "add 20")
+        add3    = gu.Simple_Adder(25, "add 25", "DD", "add 25")
+        eval1   = gu.Evaluator_1("eval1", "DD", "all > 10 ?")
+        eval2   = gu.Evaluator_1("eval2", "DD", "all > 10 ?")
+        mymap   = gu.Map(4,6)
+
+        mymap.install_machine(in1,      [0,0], [gu.DOWN_RIGHT]);            obj_in1     = mymap.get_cell(0,0)['obj']
+        mymap.install_machine(in2,      [1,0], [gu.RIGHT]);                 obj_in2     = mymap.get_cell(1,0)['obj']
+        mymap.install_machine(concat1,  [1,1], [gu.RIGHT]);                 obj_concat1 = mymap.get_cell(1,1)['obj']
+        self.assertEqual(False, concat1.ready_input_count())
+        mymap.install_machine(add1,     [1,2], [gu.RIGHT]);                 obj_add1    = mymap.get_cell(1,2)['obj']
+        mymap.install_machine(splt1,    [1,3], [gu.RIGHT, gu.DOWN_RIGHT]);  obj_splt1   = mymap.get_cell(1,3)['obj']
+        mymap.install_machine(add2,     [1,4], [gu.RIGHT]);                 obj_add2    = mymap.get_cell(1,4)['obj']
+        mymap.install_machine(add3,     [2,4], [gu.RIGHT]);                 obj_add3    = mymap.get_cell(2,4)['obj']
+        mymap.install_machine(eval1,    [1,5], [gu.END]);                   obj_eval1   = mymap.get_cell(1,5)['obj']
+        mymap.install_machine(eval2,    [2,5], [gu.END]);                   obj_eval2   = mymap.get_cell(2,5)['obj']
+
+        gu.connect_and_run(obj_in1, concat1); gu.connect_and_run(obj_in2, concat1, 'main', 'aux')
+        gu.connect_and_run(concat1, add1); gu.connect_and_run(add1, splt1)
+        gu.connect_and_run(splt1, add2, 'main', 'main')
+        gu.connect_and_run(splt1, add3, 'aux',  'main')
+        gu.connect_and_run(add2, eval1); gu.connect_and_run(add3, eval2)
+        eval1.run()
+        eval2.run()
+
+        self.assertEqual(concat1.input_buffer['main'], [1])
+        self.assertEqual(concat1.input_buffer['aux'] , [2])
+        self.assertEqual(add1.output_buffer['main'], [-4,-3])
+        self.assertEqual(splt1.output_buffer['main'], [-4])
+        self.assertEqual(splt1.output_buffer['aux'], [-3])
+        self.assertEqual(add2.output_buffer['main'], [16])
+        self.assertEqual(add3.output_buffer['main'], [22])
+        self.assertEqual(eval1.output_buffer['main'], [1])
+        self.assertEqual(eval2.output_buffer['main'], [1])
+
+        self.assertEqual(True, obj_in1.ready_input_count())
+        self.assertEqual(True, obj_in2.ready_input_count())
+        self.assertEqual(True, concat1.ready_input_count())
+        self.assertEqual(True, add1.ready_input_count())
+        self.assertEqual(True, splt1.ready_input_count())
+        self.assertEqual(True, add2.ready_input_count())
+        self.assertEqual(True, add3.ready_input_count())
+        self.assertEqual(True, eval1.ready_input_count())
+        self.assertEqual(True, eval2.ready_input_count())
+       
+
     def test_ingest_data_append_method(self):
         adder = gu.Simple_Adder(operand=1, title_private='adder1',
                                 title_public='add 1', manufacturer='DD',)
