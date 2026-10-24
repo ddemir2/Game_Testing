@@ -1,18 +1,18 @@
 '''
-Version 1.9
-Melted Ice Fox II
-Begin simplify refactor. Saving before I turn input_buffer into a list.
+Version 1.10
+Winter Wombat
+Run Complex Route Done, Major Refactor Done
 '''
 
 import game_utils as gu
 import game_ui as gui
 
 if __name__ == "__main__":
-    adder_1      = gu.Simple_Adder(operand = 1,            title_private="ADDER_1",      manufacturer="DD",  title_public='Adder',          loud_debug=False)
-    adder_2      = gu.Simple_Adder(operand = 3,            title_private="ADDER_2",      manufacturer="DD",  title_public='Adder',          loud_debug=False)
-    adder_3      = gu.Simple_Adder(operand = 6,            title_private="ADDER_3",      manufacturer="DD",  title_public= 'Adder',         loud_debug=False)
-    input_stream = gu.Input_Stream(input_data=[1,2,6,4,2], title_private="INPUT_STREAM", manufacturer="N/A", title_public='Input',          loud_debug=False)
-    eval_1       = gu.Evaluator_1(                         title_private="EVAL_1",       manufacturer='DD',  title_public='Output',  loud_debug=False)
+    adder_1      = gu.Simple_Adder(operand = 1,            title_private="ADDER_1",      config="DD",  title_public='Adder',          loud_debug=False)
+    adder_2      = gu.Simple_Adder(operand = 3,            title_private="ADDER_2",      config="DD",  title_public='Adder',          loud_debug=False)
+    adder_3      = gu.Simple_Adder(operand = 6,            title_private="ADDER_3",      config="DD",  title_public= 'Adder',         loud_debug=False)
+    input_stream = gu.Input_Stream(input_data=[1,2,6,4,2], title_private="INPUT_STREAM", config="N/A", title_public='Input',          loud_debug=False)
+    eval_1       = gu.Evaluator_1(                         title_private="EVAL_1",       config='DD',  title_public='Output',  loud_debug=False)
     mymap        = gu.Map(gu.CLASSIC_TESTING_GAME_BOARD_SIZE, gu.CLASSIC_TESTING_GAME_BOARD_SIZE, loud_debug=True)
 
     mymap.install_machine(input_stream, [0,0], output_directions=[gu.DOWN])
